@@ -20,7 +20,7 @@ Ideal for showcasing ABAP skills (Open SQL, LOOPs, CASE, SALV ALV, custom logic)
 ✅ Used for **test dataset generation**.
 
 **Screenshot:**  
-![ZBOOKINGS_DEMO](images/zbookings_demo.png)
+![ZBOOKINGS_DEMO](images/Dataset_Insertion.png)
 
 ---
 
@@ -35,7 +35,7 @@ Ideal for showcasing ABAP skills (Open SQL, LOOPs, CASE, SALV ALV, custom logic)
 ✅ Demonstrates **risk classification & ALV reports**.
 
 **Screenshot:**  
-![ZBOOKINGS_REPORT](images/zbookings_report.png)
+![ZBOOKINGS_REPORT](images/Risk_Report.png)
 
 ---
 
@@ -48,7 +48,7 @@ Ideal for showcasing ABAP skills (Open SQL, LOOPs, CASE, SALV ALV, custom logic)
 ✅ Demonstrates **aggregations, SQL + LOOP logic, SALV ALV display**.
 
 **Screenshot:**  
-![ZBOOKINGS_ANALYTICS](images/zbookings_analytics.png)
+![ZBOOKINGS_ANALYTICS](images/Booking_Statistics.png)
 
 ---
 
