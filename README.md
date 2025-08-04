@@ -63,4 +63,3 @@ Ideal for showcasing ABAP skills (Open SQL, LOOPs, CASE, SALV ALV, custom logic)
 
 ---
 
-## 📂 Repository Layout
