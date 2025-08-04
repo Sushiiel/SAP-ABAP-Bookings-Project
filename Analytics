@@ -1,0 +1,130 @@
+*---------------------------------------------------------------------*
+* Report  ZBOOKINGS_ANALYTICS
+* Booking Analytics Dashboard (SALV ALV)
+*---------------------------------------------------------------------*
+REPORT zbookings_analytics.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+PARAMETERS: p_year TYPE i DEFAULT sy-datum+0(4).   " Year filter
+SELECTION-SCREEN END OF BLOCK b1.
+
+* Text symbols
+* 001 Analytics Parameters
+
+*---------------------------------------------------------------*
+* Structures for Analytics
+*---------------------------------------------------------------*
+TYPES: BEGIN OF ty_booking,
+         book_id    TYPE zbookings-book_id,
+         customid   TYPE zbookings-customid,
+         fldate     TYPE zbookings-fldate,
+         price      TYPE zbookings-price,
+         paymentsum TYPE zbookings-paymentsum,
+       END OF ty_booking.
+
+TYPES: BEGIN OF ty_monthly,
+         year    TYPE i,
+         month   TYPE i,
+         total_revenue TYPE p DECIMALS 2,
+         total_bookings TYPE i,
+       END OF ty_monthly.
+
+TYPES: BEGIN OF ty_customer,
+         customid TYPE zbookings-customid,
+         total_revenue TYPE p DECIMALS 2,
+         booking_count TYPE i,
+       END OF ty_customer.
+
+DATA: it_bookings TYPE TABLE OF ty_booking,
+      it_monthly  TYPE TABLE OF ty_monthly,
+      it_customer TYPE TABLE OF ty_customer.
+
+DATA: wa_booking  TYPE ty_booking,
+      wa_monthly  TYPE ty_monthly,
+      wa_customer TYPE ty_customer.
+
+*---------------------------------------------------------------------*
+* START-OF-SELECTION: Fetch Data
+*---------------------------------------------------------------------*
+START-OF-SELECTION.
+
+  " Fetch all rows, filter year in ABAP
+  SELECT book_id
+         customid
+         fldate
+         price
+         paymentsum
+    FROM zbookings
+    INTO CORRESPONDING FIELDS OF TABLE it_bookings.
+
+  DELETE it_bookings WHERE fldate+0(4) <> p_year.
+
+  IF sy-subrc <> 0 OR it_bookings IS INITIAL.
+    WRITE: / 'No bookings found for year', p_year.
+    EXIT.
+  ENDIF.
+
+  " --- Monthly Aggregation ---
+  LOOP AT it_bookings INTO wa_booking.
+    wa_monthly-year  = wa_booking-fldate+0(4).
+    wa_monthly-month = wa_booking-fldate+4(2).
+
+    READ TABLE it_monthly INTO DATA(ls_month)
+      WITH KEY year  = wa_monthly-year
+               month = wa_monthly-month.
+    IF sy-subrc = 0.
+      ls_month-total_revenue  = ls_month-total_revenue + wa_booking-paymentsum.
+      ls_month-total_bookings = ls_month-total_bookings + 1.
+      MODIFY it_monthly FROM ls_month INDEX sy-tabix.
+    ELSE.
+      wa_monthly-total_revenue  = wa_booking-paymentsum.
+      wa_monthly-total_bookings = 1.
+      APPEND wa_monthly TO it_monthly.
+    ENDIF.
+  ENDLOOP.
+
+  " --- Customer-wise Aggregation ---
+  LOOP AT it_bookings INTO wa_booking.
+    READ TABLE it_customer INTO DATA(ls_cust)
+      WITH KEY customid = wa_booking-customid.
+    IF sy-subrc = 0.
+      ls_cust-total_revenue  = ls_cust-total_revenue + wa_booking-paymentsum.
+      ls_cust-booking_count  = ls_cust-booking_count + 1.
+      MODIFY it_customer FROM ls_cust INDEX sy-tabix.
+    ELSE.
+      wa_customer-customid      = wa_booking-customid.
+      wa_customer-total_revenue = wa_booking-paymentsum.
+      wa_customer-booking_count = 1.
+      APPEND wa_customer TO it_customer.
+    ENDIF.
+  ENDLOOP.
+
+*---------------------------------------------------------------------*
+* END-OF-SELECTION: Display ALV Reports
+*---------------------------------------------------------------------*
+END-OF-SELECTION.
+
+  PERFORM show_alv USING it_monthly 'Monthly Booking Statistics'.
+  PERFORM show_alv USING it_customer 'Top Customers by Revenue'.
+
+*---------------------------------------------------------------------*
+* FORM to Display ALV
+*---------------------------------------------------------------------*
+FORM show_alv USING it_data iv_title.
+
+  DATA lo_alv TYPE REF TO cl_salv_table.
+  DATA lx_msg TYPE REF TO cx_salv_msg.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = it_data ).
+
+      lo_alv->get_display_settings( )->set_list_header( iv_title ).
+      lo_alv->display( ).
+
+    CATCH cx_salv_msg INTO lx_msg.
+      MESSAGE lx_msg->get_text( ) TYPE 'E'.
+  ENDTRY.
+
+ENDFORM.

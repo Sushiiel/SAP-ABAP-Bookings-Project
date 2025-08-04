@@ -1,0 +1,57 @@
+REPORT zbookings_demo.
+TABLES: zbookings.
+DATA: wa_booking  TYPE zbookings,
+      it_bookings TYPE TABLE OF zbookings,
+      lv_index    TYPE n LENGTH 4. " numeric, safe for formatting
+START-OF-SELECTION.
+
+
+  DELETE FROM zbookings WHERE book_id LIKE 'B%'.
+  DO 200 TIMES.
+    CLEAR wa_booking.
+
+    lv_index = sy-index.
+    wa_booking-book_id  = |B{ lv_index ALPHA = IN }|.
+    wa_booking-customid = |CUST{ lv_index }|.
+
+    CASE sy-index MOD 3.
+      WHEN 0. wa_booking-carrid = 'LH'.
+      WHEN 1. wa_booking-carrid = 'AI'.
+      WHEN 2. wa_booking-carrid = 'SQ'.
+    ENDCASE.
+
+    wa_booking-connid   = 400 + sy-index.
+    wa_booking-fldate   = sy-datum + ( sy-index * 2 ).
+    wa_booking-price      = 500 + ( sy-index * 20 ).
+    wa_booking-paymentsum = wa_booking-price * 2.
+
+    INSERT zbookings FROM wa_booking.
+  ENDDO.
+
+  COMMIT WORK.
+
+END-OF-SELECTION.
+
+  SELECT * FROM zbookings INTO TABLE it_bookings
+    ORDER BY book_id.
+
+  IF sy-subrc <> 0.
+    WRITE: / 'No data found in ZBOOKINGS.'.
+    EXIT.
+  ENDIF.
+
+  WRITE: / '--- ZBOOKINGS Table Contents (200 Rows) ---'.
+  ULINE.
+  WRITE: / 'BOOK_ID', 12 'CARRID', 22 'CONNID',
+           32 'FLDATE', 47 'PRICE', 62 'PAYMENTSUM', 82 'CUSTOMID'.
+  ULINE.
+
+  LOOP AT it_bookings INTO wa_booking.
+    WRITE: / wa_booking-book_id,
+             12 wa_booking-carrid,
+             22 wa_booking-connid,
+             32 wa_booking-fldate,
+             47 wa_booking-price,
+             62 wa_booking-paymentsum,
+             82 wa_booking-customid.
+  ENDLOOP.

@@ -1,0 +1,87 @@
+*---------------------------------------------------------------------*
+* Report ZBOOKINGS_REPORT
+* Booking Risk Scoring Dashboard (SALV ALV)
+*---------------------------------------------------------------------*
+REPORT zbookings_report.
+
+*---------------------------------------------------------------*
+* Selection screen for parameters
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+PARAMETERS: p_high TYPE i DEFAULT 50000,  " High value threshold
+            p_days TYPE i DEFAULT 30.     " Days threshold
+SELECTION-SCREEN END OF BLOCK b1.
+
+* Text symbols
+* 001 Risk Scoring Parameters
+
+*---------------------------------------------------------------*
+* Define local structure with Risk Level
+*---------------------------------------------------------------*
+TYPES: BEGIN OF ty_booking,
+         book_id    TYPE zbookings-book_id,
+         customid   TYPE zbookings-customid,
+         fldate     TYPE zbookings-fldate,
+         price      TYPE zbookings-price,
+         paymentsum TYPE zbookings-paymentsum,
+         risk_level TYPE char10,   " Calculated field
+       END OF ty_booking.
+
+DATA: it_bookings TYPE TABLE OF ty_booking,
+      wa_booking  TYPE ty_booking.
+
+*---------------------------------------------------------------*
+* START-OF-SELECTION: Fetch Data
+*---------------------------------------------------------------*
+START-OF-SELECTION.
+
+  " Fetch data from ZBOOKINGS
+  SELECT book_id
+         customid
+         fldate
+         price
+         paymentsum
+    FROM zbookings
+    INTO CORRESPONDING FIELDS OF TABLE it_bookings.
+
+  IF sy-subrc <> 0.
+    WRITE: / 'No bookings found in ZBOOKINGS table.'.
+    EXIT.
+  ENDIF.
+
+  " Apply Risk Scoring
+  LOOP AT it_bookings INTO wa_booking.
+    IF wa_booking-paymentsum > p_high.
+      wa_booking-risk_level = 'HIGH'.
+    ELSEIF wa_booking-fldate - sy-datum > p_days.
+      wa_booking-risk_level = 'MEDIUM'.
+    ELSE.
+      wa_booking-risk_level = 'LOW'.
+    ENDIF.
+
+    MODIFY it_bookings FROM wa_booking INDEX sy-tabix.
+  ENDLOOP.
+
+*---------------------------------------------------------------*
+* END-OF-SELECTION: Display in SALV ALV
+*---------------------------------------------------------------*
+END-OF-SELECTION.
+
+  DATA lo_alv TYPE REF TO cl_salv_table.
+  DATA lx_msg TYPE REF TO cx_salv_msg.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = lo_alv
+        CHANGING  t_table      = it_bookings ).
+
+      " Set header
+      lo_alv->get_display_settings( )->set_list_header(
+        'Booking Risk Scoring Dashboard' ).
+
+      " Display table
+      lo_alv->display( ).
+
+    CATCH cx_salv_msg INTO lx_msg.
+      MESSAGE lx_msg->get_text( ) TYPE 'E'.
+  ENDTRY.
